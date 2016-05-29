@@ -43,7 +43,7 @@ def unaryenergy(fg, bg, img):
     return unary
 
 
-def pairwiseenergy(img):
+def pairwiseenergy(unaries, img):
     logging.info("Calculate pairwise energy functions.")
     ysize, xsize, _ = img.shape
     pairwise = np.array()
@@ -54,7 +54,11 @@ def pairwiseenergy(img):
     with progressbar.ProgressBar(max_value=xsize, redirect_stdout=True) as progress:
         for x in range(xsize):
             for y in range(ysize):
-                pass  # if np.exp(-l * np.linalg.norm())
+                pass
+                #if unaries[y, x, 3] ==
+                #    np.exp(-l * np.linalg.norm())
+                #else:
+                #    pass
             progress.update(x)
 
     return pairwise
