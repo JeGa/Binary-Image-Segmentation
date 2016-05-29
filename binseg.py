@@ -3,7 +3,9 @@ from scipy import misc
 import scipy.stats
 import logging
 import matplotlib.pyplot as plt
-
+from prettytable import PrettyTable
+import progressbar
+import maxflow
 
 class GMM:
     def __init__(self, prob):
@@ -24,8 +26,17 @@ class GMM:
         return prob
 
 
-def unaryenergy():
-    pass
+def unaryenergy(fg, bg, img):
+    logging.info("Calculate unary energy functions.")
+    ysize, xsize, _ = img.shape
+    unary = np.empty((ysize, xsize, 2))
+
+    with progressbar.ProgressBar(max_value=xsize, redirect_stdout=True) as progress:
+        for x in range(xsize):
+            for y in range(ysize):
+                unary[y, x, 0] = -np.log(bg.prob(img[y, x]))
+                unary[y, x, 1] = -np.log(fg.prob(img[y, x]))
+            progress.update(x)
 
 
 def readprobfile(filename):
@@ -51,7 +62,7 @@ def main():
     img = misc.imread("banana3.png")
     img = np.array(img, dtype=np.float64)
 
-    unary = np.empty(img.shape[0:2])
+    unaryenergy(fg, bg, img)
 
     logging.info("Save image.")
     img = img.astype(np.uint8)
