@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 import progressbar
 import maxflow
+from maxflow.examples_utils import plot_graph_2d
+
 
 class GMM:
     def __init__(self, prob):
@@ -38,6 +40,25 @@ def unaryenergy(fg, bg, img):
                 unary[y, x, 1] = -np.log(fg.prob(img[y, x]))
             progress.update(x)
 
+    return unary
+
+
+def pairwiseenergy(img):
+    logging.info("Calculate pairwise energy functions.")
+    ysize, xsize, _ = img.shape
+    pairwise = np.array()
+
+    l = 0.5
+    w = 1.0
+
+    with progressbar.ProgressBar(max_value=xsize, redirect_stdout=True) as progress:
+        for x in range(xsize):
+            for y in range(ysize):
+                pass  # if np.exp(-l * np.linalg.norm())
+            progress.update(x)
+
+    return pairwise
+
 
 def readprobfile(filename):
     file = np.load(filename)
@@ -62,7 +83,22 @@ def main():
     img = misc.imread("banana3.png")
     img = np.array(img, dtype=np.float64)
 
-    unaryenergy(fg, bg, img)
+    unaries = unaryenergy(fg, bg, img)
+
+    ysize, xsize, _ = img.shape
+
+    g = maxflow.GraphFloat()
+    nodeids = g.add_grid_nodes((5, 5))
+    structure = np.array([[0, 1, 0],
+                          [1, 0, 1],
+                          [0, 1, 0]])
+
+    g.add_grid_edges(nodeids, structure=structure, symmetric=True)
+
+    # Source and sink
+    g.add_grid_tedges(nodeids, 0, 2)
+
+    plot_graph_2d(g, nodeids.shape)
 
     logging.info("Save image.")
     img = img.astype(np.uint8)
