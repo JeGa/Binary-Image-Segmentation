@@ -89,9 +89,17 @@ def generateunaries(img):
     np.save("unary", unaries)
 
 
+class Node:
+    def __init__(self, nodeid, y, x):
+        self.nodeid = nodeid
+        self.y = y
+        self.x = x
+
+
 class Nodegrid:
     def __init__(self, ysize, xsize):
         self.g = maxflow.GraphFloat()
+
         self.nodeids = self.g.add_grid_nodes((ysize, xsize))
 
         self.ysize = ysize
@@ -101,54 +109,62 @@ class Nodegrid:
         """
         Loops over the grid of nodes. Two callback functions are required:
 
-        :param edgecallback: Called for every edge with node id (i, j)
-            as parameter.
-        :param nodecallback: called for every node with node id as parameter.
+        :param edgecallback: Called for every edge.
+        :param nodecallback: Called for every node.
         """
         logging.info("Iterate through graph.")
 
         for y in range(self.ysize - 1):
             for x in range(self.xsize - 1):
-                # Right edge
-                edgecallback(self.nodeids[y, x],
-                             self.nodeids[y, x + 1], self.g)
-
-                # Down edge
-                edgecallback(self.nodeids[y, x],
-                             self.nodeids[y + 1, x], self.g)
+                node_i = self.getNode(y, x)
 
                 # Node
-                nodecallback(self.nodeids[y, x], y, x, self.g)
+                nodecallback(node_i, self.g)
+
+                # Right edge
+                node_j = self.getNode(y, x + 1)
+                edgecallback(node_i, node_j, self.g)
+
+                # Down edge
+                node_j = self.getNode(y + 1, x)
+                edgecallback(node_i, node_j, self.g)
 
         # Last column
         for y in range(self.ysize - 1):
-            # Down edge
-            edgecallback(self.nodeids[y, self.xsize - 1],
-                         self.nodeids[y + 1, self.xsize - 1], self.g)
+            node_i = self.getNode(y, self.xsize - 1)
 
             # Node
-            nodecallback(self.nodeids[y, self.xsize - 1], y, x, self.g)
+            nodecallback(node_i, self.g)
+
+            # Down edge
+            node_j = self.getNode(y + 1, self.xsize - 1)
+            edgecallback(node_i, node_j, self.g)
 
         # Last row
         for x in range(self.xsize - 1):
-            # Right edge
-            edgecallback(self.nodeids[self.ysize - 1, x],
-                         self.nodeids[self.ysize - 1, x + 1], self.g)
+            node_i = self.getNode(self.ysize - 1, x)
 
             # Node
-            nodecallback(self.nodeids[self.ysize - 1, x], y, x, self.g)
+            nodecallback(node_i, self.g)
+
+            # Right edge
+            node_j = self.getNode(self.ysize - 1, x + 1)
+            edgecallback(node_i, node_j, self.g)
 
         # Last node
-        nodecallback(self.nodeids[self.ysize - 1, self.xsize - 1], y, x, self.g)
+        nodecallback(self.getNode(self.ysize - 1, self.xsize - 1), self.g)
 
     def loopnodes(self, callback):
         for y in range(self.ysize):
             for x in range(self.xsize):
-                callback(self.nodeids[y, x], y, x, self.g)
+                callback(self.getNode(y, x), self.g)
 
     def maxflow(self):
         logging.info("Calculate max flow.")
         self.g.maxflow()
+
+    def getNode(self, y, x):
+        return Node(self.nodeids[y, x], y, x)
 
 
 class Binseg:
@@ -158,41 +174,70 @@ class Binseg:
 
         self.nodegrid = Nodegrid(img.shape[0], img.shape[1])
 
-        self.l = 0.005
-        self.w = 100
+        self.l = 0.0005
+        self.w = 10
 
-    def edge(self, nodeid_i, nodeid_j, graph):
+    def edge(self, node_i, node_j, graph):
         """
         Callback for pairwise energy.
         """
-        pass
+        i = [node_i.y, node_i.x]
+        j = [node_j.y, node_j.x]
 
-    def node_assign(self, nodeid_i, y, x, graph):
+        # Pixel values
+        xi = self.img[i[0], i[1]]
+        xj = self.img[j[0], j[1]]
+
+        A = self.pairwiseenergy(0, 0, xi, xj)
+        B = self.pairwiseenergy(0, 1, xi, xj)
+        C = self.pairwiseenergy(1, 0, xi, xj)
+        D = self.pairwiseenergy(1, 1, xi, xj)
+
+        #energy = self.pairwiseenergy(self.unaries[i[0], i[1], 2],
+        #                             self.unaries[j[0], j[1], 2],
+        #                             xi, xj)
+
+        # print(A, B, C, D)
+
+        graph.add_edge(node_i.nodeid, node_j.nodeid, B + C - A - D, 0.0)
+
+        graph.add_tedge(node_i.nodeid, C, A)
+        graph.add_tedge(node_j.nodeid, D, C)
+
+    def node_assign(self, node_i, graph):
         """
         Callback for assigning unary energy.
         """
-        graph.add_tedge(nodeid_i, self.unaries[y, x, 1], self.unaries[y, x, 0])
+        graph.add_tedge(node_i.nodeid,
+                        self.unaries[node_i.y, node_i.x, 1],
+                        self.unaries[node_i.y, node_i.x, 0])
 
-    def node_segment(self, nodeid_i, y, x, graph):
+    def node_segment(self, node_i, graph):
         """
         Callback for segmentation.
         """
-        if graph.get_segment(nodeid_i) == 0:
-            self.img[y, x] = np.array([0, 0, 0])
+        if graph.get_segment(node_i.nodeid) == 0:
+            self.img[node_i.y, node_i.x] = np.array([0, 0, 0])
         else:
-            self.img[y, x] = np.array([255, 255, 0])
+            self.img[node_i.y, node_i.x] = np.array([255, 255, 0])
 
-    def pairwiseenergy(y1, x1, y2, x2):
-        pass
-        # if unaries[y1, x1, 2] != unaries[y2, x2, 2]:
-        #     delta = 1
-        # else:
-        #     delta = 0
-        #
-        # # Not same label
-        # energy = w * np.exp(-l * np.power(np.linalg.norm(img[y1, x1] - img[y2, x2], ord=2), 2)) * delta
-        # # a = (np.linalg.norm(img[y1, x1] - img[y2, x2], ord=2))
-        # return energy
+    def pairwiseenergy(self, y1, y2, x1, x2):
+        """
+        Returns pairwise energy between node i and node j using the Potts model.
+
+        :param y1: Label of i node.
+        :param y2: Label of j node.
+        :param x1: Pixel value at node i.
+        :param x2: Pixel value at node j.
+        :return: Pairwise energy.
+        """
+        if y1 == y2:
+            return 0.0
+
+        # Not same label
+        # np.sum(np.power(x1 - x2, 2), 0)
+        energy = self.w * np.exp(-self.l * np.power(np.linalg.norm(x1 - x2, 2), 2))
+        return energy
 
     def segment(self):
         self.nodegrid.loop(self.edge, self.node_assign)
