@@ -9,6 +9,7 @@ import os
 import click
 import random
 
+
 class GMM:
     def __init__(self, prob):
         """
@@ -363,7 +364,7 @@ class BinsegAlphaexp:
         return energy
 
     def segment(self):
-        for i in range(1):
+        for i in range(3):
             # For each label: Change current label to alpha?
             for alpha in self.label:
                 self.alpha = alpha
@@ -393,6 +394,19 @@ class BinsegAlphaexp:
         return self.img
 
 
+def loadunaryfile(filename, ysize, xsize, labels):
+    data = np.empty((ysize, xsize, labels))
+    file = open("filename", "r")
+    for y in range(ysize):
+        for x in range(xsize):
+            line = file.readline()
+            strdata = line.split(",")
+            floatdata = []
+            for i in strdata:
+                floatdata.append(float(i))
+            data[y, x] = floatdata
+
+
 def binseg():
     logging.info("Read image.")
     img = misc.imread("banana3.png")
@@ -416,6 +430,28 @@ def binseg():
 
 
 def alphaexp():
+    imagename = ""
+    unaryfilename = ""
+
+    logging.info("Read image.")
+    img = misc.imread(imagename)
+    img = np.array(img, dtype=np.float64) / 255
+
+    logging.info("Load unaries.")  #
+    unaries = loadunaryfile(unaryfilename, img.shape[0], img.shape[1], 21)
+
+    binseg = BinsegAlphaexp(img, unaries, 21)
+    binseg.segment()
+
+    logging.info("Save image.")
+    img = binseg.getimg().astype(np.uint8)
+
+    plt.imshow(img)
+    plt.show()
+    plt.imsave("banana_out", img)
+
+
+def alphaexpbinary():
     logging.info("Read image.")
     img = misc.imread("banana3.png")
     img = np.array(img, dtype=np.float64) / 255
