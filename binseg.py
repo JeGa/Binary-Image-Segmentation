@@ -174,8 +174,8 @@ class Binseg:
 
         self.nodegrid = Nodegrid(img.shape[0], img.shape[1])
 
-        self.l = 0.0005
-        self.w = 10
+        self.l = 0.5
+        self.w = 3.5
 
     def edge(self, node_i, node_j, graph):
         """
@@ -255,7 +255,7 @@ def main():
 
     logging.info("Read image.")
     img = misc.imread("banana3.png")
-    img = np.array(img, dtype=np.float64)
+    img = np.array(img, dtype=np.float64) / 255
 
     if not os.path.exists("unary.npy"):
         generateunaries(img)
