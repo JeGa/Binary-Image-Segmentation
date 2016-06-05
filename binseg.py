@@ -254,7 +254,7 @@ class BinsegAlphaexp:
         self.label = range(numlabel)
 
         # Initial labeling. All = 0
-        self.y = np.empty((img.shape[0], img.shape[1]))
+        self.y = np.zeros((img.shape[0], img.shape[1]))
 
         self.l = 0.5
         self.w = 3.5
@@ -363,8 +363,8 @@ class BinsegAlphaexp:
         energy = self.w * np.exp(-self.l * np.power(np.linalg.norm(x1 - x2, 2), 2))
         return energy
 
-    def segment(self):
-        for i in range(3):
+    def segment(self, iterations):
+        for i in range(iterations):
             # For each label: Change current label to alpha?
             for alpha in self.label:
                 self.alpha = alpha
@@ -394,17 +394,21 @@ class BinsegAlphaexp:
         return self.img
 
 
-def loadunaryfile(filename, ysize, xsize, labels):
+def loadunaryfile(filename):
+    file = open(filename, "r")
+
+    xsize = int(file.readline())
+    ysize = int(file.readline())
+    labels = int(file.readline())
+
     data = np.empty((ysize, xsize, labels))
-    file = open("filename", "r")
-    for y in range(ysize):
-        for x in range(xsize):
-            line = file.readline()
-            strdata = line.split(",")
-            floatdata = []
-            for i in strdata:
-                floatdata.append(float(i))
-            data[y, x] = floatdata
+
+    for x in range(xsize):
+        for y in range(ysize):
+            for l in range(labels):
+                data[y, x, l] = float(file.readline())
+
+    return data
 
 
 def binseg():
@@ -430,18 +434,20 @@ def binseg():
 
 
 def alphaexp():
-    imagename = ""
-    unaryfilename = ""
+    imagename = "1_27_s.bmp"
+    unaryfilename = "1_27_s.c_unary.txt"
 
     logging.info("Read image.")
-    img = misc.imread(imagename)
+    img = misc.imread(os.path.join("data", imagename))
     img = np.array(img, dtype=np.float64) / 255
 
-    logging.info("Load unaries.")  #
-    unaries = loadunaryfile(unaryfilename, img.shape[0], img.shape[1], 21)
+    logging.info("Load unaries.")
+    unaries = loadunaryfile(os.path.join("data", unaryfilename))
+    unaries = -np.log(unaries)
+    numlabels = unaries.shape[2]
 
-    binseg = BinsegAlphaexp(img, unaries, 21)
-    binseg.segment()
+    binseg = BinsegAlphaexp(img, unaries, numlabels)
+    binseg.segment(3)
 
     logging.info("Save image.")
     img = binseg.getimg().astype(np.uint8)
@@ -463,7 +469,7 @@ def alphaexpbinary():
     unaries = np.load("unary.npy")
 
     binseg = BinsegAlphaexp(img, unaries, 2)
-    binseg.segment()
+    binseg.segment(1)
 
     logging.info("Save image.")
     img = binseg.getimg().astype(np.uint8)
