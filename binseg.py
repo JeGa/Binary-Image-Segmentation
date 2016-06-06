@@ -434,8 +434,8 @@ def binseg():
 
 
 def alphaexp():
-    imagename = "1_27_s.bmp"
-    unaryfilename = "1_27_s.c_unary.txt"
+    imagename = "2_13_s.bmp"
+    unaryfilename = "2_13_s.c_unary.txt"
 
     logging.info("Read image.")
     img = misc.imread(os.path.join("data", imagename))
@@ -447,14 +447,14 @@ def alphaexp():
     numlabels = unaries.shape[2]
 
     binseg = BinsegAlphaexp(img, unaries, numlabels)
-    binseg.segment(3)
+    binseg.segment(2)
 
     logging.info("Save image.")
     img = binseg.getimg().astype(np.uint8)
 
     plt.imshow(img)
     plt.show()
-    plt.imsave("banana_out", img)
+    plt.imsave("img_out", img)
 
 
 def alphaexpbinary():
